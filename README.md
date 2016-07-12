@@ -13,7 +13,7 @@ Create a file called `prod.yml` in the `config/` directory with the desired dbt 
 ```bash
 $ python schedule.py
 ```
-to install the new CronTab. If you're cron config changes, just run the above command again to delete existing cronjobs and install the new ones. Only cronjobs containing the comment "autovacuum scheduler" will be deleted!
+to install the new CronTab. If your cron config changes, just run the above command again to delete existing cron jobs and install the new ones. Only cron jobs containing the comment "autovacuum scheduler" will be deleted!
 
 
 ### legal
