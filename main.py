@@ -1,21 +1,28 @@
 #!/usr/bin/env python
 
-BASTION_SERVER = 'fishtown-bastion'
-QUERY = 'select now()'
-
 from dbt.project import Project, read_profiles
 from dbt.runner import RedshiftTarget
+from sshtunnel import SSHTunnelForwarder
+import psycopg2
+import paramiko
+import os, sys
+import subprocess
+
+if len(sys.argv) != 2:
+  print "Usage: {} [dbt-profile-target]".format(sys.argv[0])
+  sys.exit(1)
+
+PROFILE = sys.argv[1]
+BASTION_SERVER = 'fishtown-bastion'
+
+cwd = os.path.dirname(os.path.realpath(__file__))
+program_name = "analyze-vacuum-schema.py"
+PROG = os.path.join(cwd, program_name)
+LOG_DIR = os.path.join(cwd, "logs")
 
 all_profiles = read_profiles()
-p = Project({}, all_profiles, ['uservoice'])
+p = Project({}, all_profiles, [PROFILE])
 env = p.run_environment()
-
-print env
-
-from sshtunnel import SSHTunnelForwarder
-import paramiko
-import psycopg2
-import os
 
 ssh_config = paramiko.SSHConfig()
 user_config_file = os.path.expanduser("~/.ssh/config")
@@ -26,39 +33,48 @@ user_config = ssh_config.lookup(BASTION_SERVER)
 hostname = user_config['hostname']
 username = user_config['user']
 
+def get_schemas(conn_string):
+  schemas_query = "select nspname from pg_namespace where nspname not like 'pg%'"
+
+  schemas = []
+  with psycopg2.connect(conn_string) as conn:
+    with conn.cursor() as cur:
+      cur.execute(schemas_query)
+      for result in cur.fetchall():
+        schemas.append(result[0])
+  return schemas
+
+def quote(arg):
+  return "'{}'".format(arg)
+
 with SSHTunnelForwarder(hostname, ssh_username=username, remote_bind_address=(env['host'], env['port'])) as tunnel:
   local_host = "127.0.0.1"
   local_port = tunnel.local_bind_port
-
   print "port: ", local_port
 
-  conn_string = "dbname={} user={} password='{}' host={} port={} connect_timeout={}".format(
-      env['dbname'],
-      env['user'],
-      env['pass'],
-      local_host,
+  pg_conn_string = "dbname={} user={} password={} host={} port={} connect_timeout={}".format(
+      quote(env['dbname']),
+      quote(env['user']),
+      quote(env['pass']),
+      quote(local_host),
       local_port,
       10
   )
 
-  print conn_string
+  schemas = get_schemas(pg_conn_string)
 
-  print "creating conn"
-  conn = psycopg2.connect(conn_string)
-
-  print "creating cursor"
-  cur = conn.cursor()
-
-  print "running query"
-  cur.execute(QUERY)
-
-  print "getting results!"
-  print cur.fetchone()
-
-  print "closing cursor"
-  cur.close()
-
-  print "closing conn"
-  conn.close()
+  for schema in schemas:
+    cmd = ["python", PROG,
+        "--db",      quote(env['dbname']),
+        "--db-user", quote(env['user']),
+        "--db-pwd",  quote(env['pass']),
+        "--db-host", quote(local_host),
+        "--db-port", quote(local_port),
+        "--schema-name", schema,
+        "--output-file", os.path.join(LOG_DIR, "log-{}.txt".format(schema))]
+    print "Running analyze/vacuum for shchema: {}".format(schema)
+    subprocess.check_call(cmd)
 
   print "done!"
+
+
