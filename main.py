@@ -7,13 +7,22 @@ import psycopg2
 import paramiko
 import os, sys
 import subprocess
+import yaml
 
 if len(sys.argv) != 2:
   print "Usage: {} [dbt-profile-target]".format(sys.argv[0])
   sys.exit(1)
 
+def read_config(config_file):
+  config = {}
+  with open(config_file) as config_fh:
+    config = yaml.load(config_fh.read())
+  return config
+
+config = read_config('config/prod.yml')
+
 PROFILE = sys.argv[1]
-BASTION_SERVER = 'fishtown-bastion'
+BASTION_SERVER = config['bastion']
 
 cwd = os.path.dirname(os.path.realpath(__file__))
 program_name = "analyze-vacuum-schema.py"

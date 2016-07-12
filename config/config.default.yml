@@ -1,3 +1,4 @@
+bastion: my-bastion-server-name
 clients:
   - name: Client Name
     profile: client_profile_name
