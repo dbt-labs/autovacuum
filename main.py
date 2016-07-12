@@ -29,6 +29,10 @@ program_name = "analyze-vacuum-schema.py"
 PROG = os.path.join(cwd, program_name)
 LOG_DIR = os.path.join(cwd, "logs")
 
+
+if not os.path.exists(LOG_DIR):
+  os.makedirs(LOG_DIR)
+
 all_profiles = read_profiles()
 p = Project({}, all_profiles, [PROFILE])
 env = p.run_environment()
