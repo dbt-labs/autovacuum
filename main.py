@@ -85,7 +85,7 @@ with SSHTunnelForwarder(hostname, ssh_username=username, remote_bind_address=(en
         "--db-port", quote(local_port),
         "--schema-name", schema,
         "--output-file", os.path.join(LOG_DIR, "log-{}.txt".format(schema))]
-    print "Running analyze/vacuum for shchema: {}".format(schema)
+    print "Running analyze/vacuum for schema: {}".format(schema)
     subprocess.check_call(cmd)
 
   print "done!"
