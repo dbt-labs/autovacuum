@@ -16,6 +16,8 @@ def delete_configs(cron):
 
 def install_config(cron, cmd, name, day, hour):
   job = cron.new(command=cmd, comment=IDENTIFER_COMMENT)
+  # only run it on the first minute of the hour!
+  job.minute.on(0)
   job.dow.on(day)
   job.hour.on(hour)
 
