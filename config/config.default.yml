@@ -1,0 +1,5 @@
+clients:
+  - name: Client Name
+    profile: client_profile_name
+    day: SUN
+    hour: 2
